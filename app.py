@@ -32,16 +32,6 @@ def dry_run():
         "sample": model.return_names()
     }
     return jsonify(returnable), 200
-    
-# This is s dynamic "kwarg" wrapper around a dist_nn_class module
-# Assumes your class & request to have the method name and the kwargs for any further processin
-@app.route('/func', methods=['POST'])
-def func():
-    r = request.json
-    func_name = r.get("func", None)
-    func_kwargs = r("kwargs", {})
-    if func_name is None:
-        return "Missing function name", 400
 
 
 @app.route('/')
