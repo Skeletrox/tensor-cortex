@@ -1,0 +1,11 @@
+version: '2.3'
+services:
+  web:
+    build: .
+    runtime: nvidia
+    ports:
+      - "5000:5000"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+  redis:
+    image: "redis:alpine"
