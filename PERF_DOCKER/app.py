@@ -2,6 +2,7 @@ import time
 import redis
 from flask import Flask, jsonify, request
 from custom_nn import KerasModel, start_flag, done_flag
+from os import environ
 import numpy as np
 
 app = Flask(__name__)
@@ -19,7 +20,7 @@ def get_hit_count():
             time.sleep(0.5)
 
 
-@app.route("/dry_run", methods=['POST'])
+@app.route("/dry_run", methods=["POST"])
 def dry_run():
     r = request.json
     source = r.get("source", "boy_names")
@@ -38,3 +39,22 @@ def dry_run():
 def hello():
     count = get_hit_count()
     return 'Hello World! I have been seen {} times.\n'.format(count)
+
+
+@app.route("/getname")
+def get_name():
+    return jsonify({
+        "ID": environ["TORCS_ID"]
+    })
+
+
+@app.route('/setname', methods=["POST"])
+def setname():
+    environ["TORCS_ID"] = request.json.get("id", "NULL")
+    return jsonify({
+        "ID": environ["TORCS_ID"]
+    })
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
