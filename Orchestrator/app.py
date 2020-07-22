@@ -10,7 +10,6 @@ import string
 from os import environ
 from sys import exit
 
-
 app = Flask(__name__)
 
 metadata = None
@@ -55,10 +54,7 @@ async def demuxRuns(data):
     sessions = []
     for i in range(len(ports)):
         session = aiohttp.ClientSession()
-        jsonData = {
-            "source": data["sources"][i],
-            "count": data["counts"][i]
-        }
+        jsonData = {"source": data["sources"][i], "count": data["counts"][i]}
         url = "{}:{}/dry_run".format(DOCKER_URL, ports[i])
         tasks.append(fetchJson(session, url, jsonData, "POST"))
         sessions.append(session)
@@ -86,11 +82,10 @@ def demux():
             try:
                 returnable.append(json.loads(r))
             except Exception as e:
-                s.write(str(e)+"\n")
+                s.write(str(e) + "\n")
 
-    return jsonify({
-        "responses": returnable
-    })
+    return jsonify({"responses": returnable})
+
 
 @app.route('/init')
 def initWorkers():
@@ -98,16 +93,16 @@ def initWorkers():
     envs = []
     ports = metadata["containers"]
     returnable = {}
-    
+
     for i in range(len(ports)):
         value = randomString()
-        r = requests.post(url="{}:{}/setname".format(DOCKER_URL, ports[i]), json={
-             "id": value
-        })
+        r = requests.post(
+            url="{}:{}/setname".format(DOCKER_URL, ports[i]),
+            json={
+                "id": value
+            })
         returnable[value] = r.json()
-    return jsonify({
-        "responses": returnable
-    })
+    return jsonify({"responses": returnable})
 
 
 @app.route('/rollcall')
@@ -115,9 +110,7 @@ def rollCall():
     with open('/var/log/rollcall.log', 'a') as r:
         loop = asyncio.new_event_loop()
         returnable = loop.run_until_complete(rollCallAsync())
-    return jsonify({
-        "responses": [json.loads(r) for r in returnable]
-    })
+    return jsonify({"responses": [json.loads(r) for r in returnable]})
 
 
 @app.route('/dry_runs', methods=["POST"])
@@ -126,12 +119,9 @@ def dry_runs():
     returnable = {}
     for i in range(len(ports)):
         r = requests.get(url="{}:{}/dry_run".format(DOCKER_URL, ports[i]))
-        returnable[i] =  r.json()
+        returnable[i] = r.json()
 
-    return jsonify({
-        "responses": returnable
-    })
-
+    return jsonify({"responses": returnable})
 
 
 if __name__ == "__main__":

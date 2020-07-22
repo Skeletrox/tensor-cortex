@@ -8,6 +8,7 @@ import numpy as np
 app = Flask(__name__)
 cache = redis.Redis(host='redis', port=6379)
 
+
 def get_hit_count():
     retries = 5
     while True:
@@ -29,9 +30,7 @@ def dry_run():
     model.load_data()
     model.create_model()
     model.train_model()
-    returnable = {
-        "sample": model.return_names()
-    }
+    returnable = {"sample": model.return_names()}
     return jsonify(returnable), 200
 
 
@@ -43,17 +42,13 @@ def hello():
 
 @app.route("/getname")
 def get_name():
-    return jsonify({
-        "ID": environ["TORCS_ID"]
-    })
+    return jsonify({"ID": environ["TORCS_ID"]})
 
 
 @app.route('/setname', methods=["POST"])
 def setname():
     environ["TORCS_ID"] = request.json.get("id", "NULL")
-    return jsonify({
-        "ID": environ["TORCS_ID"]
-    })
+    return jsonify({"ID": environ["TORCS_ID"]})
 
 
 if __name__ == "__main__":
