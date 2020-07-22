@@ -1,0 +1,4 @@
+flask
+redis
+aiohttp
+requests
