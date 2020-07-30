@@ -7,7 +7,6 @@ import random
 import asyncio
 import aiohttp
 import string
-from threading import Thread
 from os import environ
 from sys import exit
 
@@ -28,31 +27,14 @@ tasks = []
 # List of sessions pertaining to above tasks. Similar constraints apply.
 sessions = []
 
-# thread pool
-thread_pool = []
-
-
-def do_awaiting_wrapper(awaitables):
-    loop = asyncio.new_event_loop()
-    loop.run_until_complete(do_awaiting(awaitables))
-    awaitables = []
-
-async def do_awaiting(awaitables):
-    global results
-    if not results:
-        return
-    results = await asyncio.gather(*awaitables, return_exceptions=True)
+# any results
+results = []
 
 # Random string generator to uniquely identify each docker instance
 def randomString(stringLength=8):
     letters = string.ascii_lowercase
     return "".join([random.choice(letters) for i in range(stringLength)])
 
-
-def join_all_threads():
-    global thread_pool
-    for t in thread_pool:
-        t.join()
 
 
 async def fetchJson(session, url, jsonData=None, method=None):
@@ -79,21 +61,35 @@ async def rollCallAsync():
     return res
 
 
-def demuxRuns(data):
-    global tasks, sessions, thread_pool
-    if tasks:
-        return
+async def demuxRuns(data):
     ports = metadata["containers"]
+    tasks = []
+    sessions = []
     for i in range(len(ports)):
         session = aiohttp.ClientSession()
         jsonData = {"source": data["sources"][i], "count": data["counts"][i]}
         url = "{}:{}/dry_run".format(DOCKER_URL, ports[i])
-        tasks.append(fetchJson(session,url,jsonData,"POST"))
+        tasks.append(fetchJson(session, url, jsonData, "POST"))
         sessions.append(session)
+    res = await asyncio.gather(*tasks, return_exceptions=True)
+    for session in sessions:
+        await session.close()
+    return res
 
-    task_thread = Thread(target=do_awaiting_wrapper,args=[tasks])
-    task_thread.start()
-    thread_pool.append(task_thread)
+
+async def demuxPolls():
+    ports = metadata["containers"]
+    tasks = []
+    sessions = []
+    for i in range(len(ports)):
+        session = aiohttp.ClientSession()
+        url = "{}:{}/poll_result".format(DOCKER_URL, ports[i])
+        tasks.append(fetchJson(session, url))
+        sessions.append(session)
+    res = await asyncio.gather(*tasks, return_exceptions=True)
+    for session in sessions:
+        await session.close()
+    return res
 
 
 @app.route('/')
@@ -103,24 +99,28 @@ def hello():
 
 @app.route('/steps', methods=["POST"])
 def demux():
-    global tasks
-    if len(tasks) > 0:
-        return jsonify({
-            "error": "tasks still running"
-        }), 429
-
+    returnable = []
     with open("/var/log/steps.log", "a") as s:
         data = request.json
-        # loop = asyncio.new_event_loop()
-        # asyncio.set_event_loop(loop)
-        # returned = loop.run_until_complete(demuxRuns(data))
-        demuxRuns(data)
+        returnable = []
+        loop = asyncio.new_event_loop()
+        returned = loop.run_until_complete(demuxRuns(data))
+        for r in returned:
+            try:
+                returnable.append(json.loads(r))
+            except Exception as e:
+                s.write(str(e) + "\n")
 
-    return jsonify({
-        "success": True,
-        "tasks_dispatched": len(tasks),
-        "sessions_dispatched": len(sessions)
-    }), 200
+    return jsonify({"responses": returnable})
+
+
+@app.route('/poll_results')
+def demux_polls():
+    with open("/var/log/polls.log", "a") as p:
+        loop = asyncio.new_event_loop()
+        returned = loop.run_until_complete(demuxPolls())
+        p.write(str(returned))
+    return jsonify({"returned": json.loads(str(returned))})
 
 
 @app.route('/num_tasks', methods=["GET"])
