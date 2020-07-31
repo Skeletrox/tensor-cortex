@@ -1,4 +1,4 @@
 flask
 redis
-aiohttp
 requests
+aiohttp

@@ -2,6 +2,8 @@ import numpy as np
 import tensorflow as tf
 import requests
 import re
+import argparse
+from json import dumps
 
 Sequential = tf.keras.models.Sequential
 LSTM = tf.keras.layers.LSTM
@@ -123,7 +125,6 @@ class KerasModel(object):
                 input_shape=(self.longest_word_size, self.num_chars),
                 return_sequences=True))
         self.model.add(Dense(self.num_chars, activation='softmax'))
-
         self.model.compile(loss='categorical_crossentropy', optimizer='adam')
 
     def train_model(self):
@@ -140,19 +141,22 @@ class KerasModel(object):
         self.model.save(path)
 
 
-def main():
-    """
-    cw = CustomNNWrapper('boy_names', 20)
-    cw.train()
-    """
-    # physical_devices = tf.config.list_physical_devices('GPU')
-    # tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
-    print("Using: {}".format(tf.__version__))
-    km = KerasModel('boy_names', 350)
+def main(source, count):
+    km = KerasModel(source, count)
     km.load_data()
     km.create_model()
     km.train_model()
+    with open("names.txt", "w") as names:
+        names.write(dumps(km.return_names(5)))
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-s", "--source", required=True, default="boy_names", action="store")
+    parser.add_argument(
+        "-c", "--count", required=True, default=350, action="store")
+    args = parser.parse_args()
+    source = args.source
+    count = int(args.count)
+    main(source, count)
