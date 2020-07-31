@@ -1,10 +1,10 @@
 import time
 import redis
 from flask import Flask, jsonify, request
-from custom_nn import KerasModel, start_flag, done_flag
 from os import environ
 import numpy as np
 import subprocess
+import json
 
 popen_obj = None
 
@@ -28,14 +28,16 @@ def get_hit_count():
 def dry_run():
     global popen_obj
     if popen_obj and not popen_obj.poll():
-        return jsonify({
-            "response": "still executing previous run"
-        }), 429
+        return jsonify({"response": "still executing previous run"}), 429
     r = request.json
     source = r.get("source", "boy_names")
     count = int(r.get("count", 50))
     proc_string = "python /code/custom_nn.py -s {} -c {}".format(source, count)
-    popen_obj = subprocess.Popen(proc_string, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    popen_obj = subprocess.Popen(
+        proc_string,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=True)
     returnable = {"started": True}
     return jsonify(returnable), 200
 
@@ -61,21 +63,17 @@ def setname():
 def poll_result():
     global popen_obj
     if popen_obj is None:
-        return jsonify({
-            "error": "no running task"
-        }), 404
+        return jsonify({"error": "no running task"}), 404
     if popen_obj.poll() is None:
-        return jsonify({
-            "status": "executing"
-        }), 200
-    
+        return jsonify({"complete": False}), 200
+
     stdout, stderr = popen_obj.communicate()
     with open("names.txt", "r") as names:
-        returned_names = names.read()
+        returned_names = json.loads(names.read())
     popen_obj = None
 
     return jsonify({
-        "status": "executed",
+        "complete": True,
         "stdout": str(stdout),
         "stderr": str(stderr),
         "result": returned_names

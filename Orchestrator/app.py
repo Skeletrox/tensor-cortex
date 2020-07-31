@@ -30,11 +30,11 @@ sessions = []
 # any results
 results = []
 
+
 # Random string generator to uniquely identify each docker instance
 def randomString(stringLength=8):
     letters = string.ascii_lowercase
     return "".join([random.choice(letters) for i in range(stringLength)])
-
 
 
 async def fetchJson(session, url, jsonData=None, method=None):
@@ -116,19 +116,30 @@ def demux():
 
 @app.route('/poll_results')
 def demux_polls():
-    with open("/var/log/polls.log", "a") as p:
+    returnable = []
+    with open("/var/log/polls.log", "w") as p:
         loop = asyncio.new_event_loop()
         returned = loop.run_until_complete(demuxPolls())
+        for r in returned:
+            # This is a stringified JSON response
+            value = json.loads(r)
+            # If the execution is complete and there is a value
+            # Complete will be set to True
+            if value.get("complete", False):
+                # Results exist
+                returned_list = value.get("result", None)
+                returnable.append(returned_list)
+            else:
+                # Oops no
+                returnable.append(value)
         p.write(str(returned))
-    return jsonify({"returned": json.loads(str(returned))})
+    return jsonify({"returned": returnable})
 
 
 @app.route('/num_tasks', methods=["GET"])
 def getTasks():
     global tasks
-    return jsonify({
-        "num_tasks": len(tasks)
-    }), 200
+    return jsonify({"num_tasks": len(tasks)}), 200
 
 
 @app.route('/init')

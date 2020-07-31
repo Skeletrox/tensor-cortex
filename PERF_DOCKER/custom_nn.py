@@ -3,6 +3,7 @@ import tensorflow as tf
 import requests
 import re
 import argparse
+from json import dumps
 
 Sequential = tf.keras.models.Sequential
 LSTM = tf.keras.layers.LSTM
@@ -146,13 +147,15 @@ def main(source, count):
     km.create_model()
     km.train_model()
     with open("names.txt", "w") as names:
-        names.write(str(km.return_names(5)))
+        names.write(dumps(km.return_names(5)))
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--source", required=True, default="boy_names", action="store")
-    parser.add_argument("-c", "--count", required=True, default=350, action="store")
+    parser.add_argument(
+        "-s", "--source", required=True, default="boy_names", action="store")
+    parser.add_argument(
+        "-c", "--count", required=True, default=350, action="store")
     args = parser.parse_args()
     source = args.source
     count = int(args.count)
