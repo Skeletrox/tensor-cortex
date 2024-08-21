@@ -1,4 +1,4 @@
 flask
 redis
 requests
-keras==2.3.0
+keras==2.13.1
